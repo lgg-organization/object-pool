@@ -36,7 +36,7 @@ private:
         if (nullptr != m_buffer) {
             m_size = size;
             return true;
-        }
+        }
         return false;
     }
 

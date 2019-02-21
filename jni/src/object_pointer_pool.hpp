@@ -56,7 +56,7 @@ class ObjectPointerPool
     
 public:
     static ObjPoolPtr<T> CreateObjectPoolSharedPtr()
-    {
+    {
         return std::make_shared<ObjectPointerPool<T>>();
     }
 
