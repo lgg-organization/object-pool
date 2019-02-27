@@ -1,19 +1,28 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-#include "object_pointer_pool.hpp"
+#include "object_pool.hpp"
 
-class SharedBuffer : public ObjectPoolObject<SharedBuffer>
+class TestImage
 {
+    static constexpr int WIDTH = 1280;
+    static constexpr int HEIGHT = 720;
+
 public:
-	SharedBuffer() {
+	TestImage() {
+        (void)alloc_buffer(WIDTH, HEIGHT);
+        return;
 	}
 
-	~SharedBuffer() {
+	TestImage(int width, int height) {
+        (void)alloc_buffer(width, height);
+        return;
+	}
+
+	~TestImage() {
         if (nullptr != m_buffer) {
             free(m_buffer);
-            m_buffer = 0;
-            printf("buffer is free!! size= %d\n", m_size);
+            m_buffer = nullptr;
         }
 	}
 
@@ -22,19 +31,33 @@ public:
 	}
 
 	int get_size() const {
-		return m_size;
+		return m_width * m_height * 3 / 2;
 	}
 
-	bool alloc_buffer(int size)
+    int get_width() {
+        return m_width;
+    }
+
+    int get_height() {
+        return m_height;
+    }
+
+	bool alloc_buffer(int width, int height)
 	{
-		return allocate(size);
+        m_width = width;
+        m_height = height;
+		return allocate(get_size());
 	}
 
 private:
     bool allocate(int size) {
+        if (nullptr != m_buffer) {
+            free(m_buffer);
+            m_buffer = nullptr;
+        }
+
         m_buffer = (uint8_t *)malloc(size);
         if (nullptr != m_buffer) {
-            m_size = size;
             return true;
         }
         return false;
@@ -42,21 +65,34 @@ private:
 
 private:
     uint8_t *m_buffer = nullptr;
-    int m_size = 0;
+
+    int m_width = WIDTH;
+    int m_height = HEIGHT;    
 };
 
 int main(int argc, char* argv[])
 {
-    ObjPoolPtr<SharedBuffer> obj_pool_ptr = 
-        ObjectPointerPool<SharedBuffer>::CreateObjectPoolSharedPtr();
-        
-    auto frame_ptr = ObjectPointerPool<SharedBuffer>::get_object(obj_pool_ptr);
-    if (!frame_ptr->alloc_buffer(1024)) {
-        printf("init failed!!\n");
+    auto pool = ObjectPool<TestImage>::CreateObjectPoolPtr();
+
+    bool ret = pool->create(2, 576, 320);
+    printf("creat: ret= %d\n", ret);
+
+    auto img = ObjectPool<TestImage>::get(pool);
+    if (nullptr == img->get_buffer()) {
+        printf("pool object get: failed!!\n");
         return -1;
     }
 
-    (void)memset(frame_ptr->get_buffer(), 1, frame_ptr->get_size());
+    printf("img: width= %d, height= %d, size= %d\n", 
+        img->get_width(), img->get_height(), img->get_size());
+
+    // process image
+    (void)memset(img->get_buffer(), 1, img->get_size());
+
+    printf("pool: obj_count= %d\n", pool->obj_count());
+
     printf("main done!!\n");
+
+    // auto release pool && img!!
     return 0;
 }
