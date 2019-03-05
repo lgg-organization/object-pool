@@ -7,7 +7,7 @@
 #include <list>
 #include <mutex>
 
-#define OBJ_POOL_DEBUG 1 // 1: enable debug. 0: disable
+#define OBJ_POOL_DEBUG 0 // 1: enable debug. 0: disable
 
 const int MaxObjectNum = 10;
 

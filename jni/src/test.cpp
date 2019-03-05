@@ -3,7 +3,7 @@
 
 #include "object_pool.hpp"
 
-#if 0
+#if 1
 class TestImage
 {
     static constexpr int WIDTH = 1280;
@@ -78,7 +78,7 @@ int main(int argc, char* argv[])
     bool ret = pool->create(2, 576, 320);
     printf("creat: ret= %d\n", ret);
 
-    auto img = pool->get(1280, 720);
+    auto img = pool->get(1280, 720); // note: reture 576x320
     if (nullptr == img->get_buffer()) {
         printf("pool object get: failed!!\n");
         return -1;
