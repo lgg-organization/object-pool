@@ -3,6 +3,7 @@
 
 #include "object_pool.hpp"
 
+#if 0
 class TestImage
 {
     static constexpr int WIDTH = 1280;
@@ -96,3 +97,140 @@ int main(int argc, char* argv[])
     // auto release pool && img!!
     return 0;
 }
+
+#else
+struct AT
+{
+    AT(){}
+    AT(int a, int b) :m_a(a), m_b(b){}
+    ~AT() {
+        std::cout << "function= " << __FUNCTION__ << " &line= " << __LINE__ << std::endl;
+    }
+    
+    void Fun()
+    {
+        std::cout << m_a << " " << m_b << std::endl;
+    }
+
+    int m_a = 0;
+    int m_b = 0;
+};
+
+struct BT
+{
+    BT(){}
+    ~BT() {
+        std::cout << "function= " << __FUNCTION__ << " &line= " << __LINE__ << std::endl;
+    }
+
+    void Fun()
+    {
+        std::cout << "from object b " << std::endl;
+    }
+};
+
+static std::shared_ptr<AT> g_at;
+static std::shared_ptr<BT> g_bt;
+
+void TestObjectPool()
+{
+    ObjectPool<AT>::ObjPoolSharedPtr p_pool_at = ObjectPool<AT>::CreateObjectPoolPtr();
+    std::cout << "function= " << __FUNCTION__ << " &line= " << __LINE__ \
+        << " at_cnt= "<< p_pool_at.use_count() \
+        << std::endl;
+    
+    auto p_pool_bt = ObjectPool<BT>::CreateObjectPoolPtr();
+    std::cout << "function= " << __FUNCTION__ << " &line= " << __LINE__ \
+        << " bt_cnt= "<< p_pool_bt.use_count() \
+        << std::endl;
+
+    std::cout << "function= " << __FUNCTION__ << " &line= " << __LINE__ << std::endl;
+    p_pool_at->create(2);
+    std::cout << "function= " << __FUNCTION__ << " &line= " << __LINE__ 
+        << " at:obj_count= " << p_pool_at->obj_count() \
+        << std::endl;
+
+    p_pool_bt->create(2);
+    std::cout << "function= " << __FUNCTION__ << " &line= " << __LINE__ 
+        << " bt:obj_count= " << p_pool_bt->obj_count() \
+        << std::endl;
+
+    p_pool_at->create<int, int>(2, 1, 1);
+
+    {
+        auto p = p_pool_at->get();
+        p->m_a = 8;
+        p->m_b = 8;
+        p->Fun();
+    }
+
+    #if 1
+    for (int i= 0; i<10; i++)
+    {
+        auto p = p_pool_at->get();
+        p->Fun();
+    }
+    #endif
+
+    auto pb = p_pool_bt->get();
+    g_bt = pb;
+    pb->Fun();
+
+    auto p = p_pool_at->get();
+    g_at = p;
+    p->Fun();
+
+    {
+        auto p10 = p_pool_at->get();
+        auto p11 = p_pool_at->get();
+        auto p12 = p_pool_at->get();
+        auto p13 = p_pool_at->get();
+        auto p14 = p_pool_at->get();
+
+        auto p_pool_at_2 = p_pool_at;
+        auto p15 = p_pool_at->get();
+        auto p16 = p_pool_at->get();
+        auto p17 = p_pool_at->get();
+        auto p18 = p_pool_at->get();
+        auto p19 = p_pool_at->get();
+        auto p20 = p_pool_at->get();
+        auto p21 = p_pool_at->get();
+
+        std::cout << "function= " << __FUNCTION__ << " &line= " << __LINE__ 
+            << " at:obj_count= " << p_pool_at->obj_count() \
+            << std::endl;
+    }
+
+    int a = 5, b = 6;
+    auto p2 = p_pool_at->get(a, b);
+    p2->Fun();
+
+    auto p3 = p_pool_at->get(3, 4);
+    p3->Fun();
+
+    {
+        auto p4 = p_pool_at->get(3, 4);
+        p4->Fun();
+    }
+
+    auto p4 = p_pool_at->get(7, 8);
+    p4->Fun();
+
+    std::cout << "function= " << __FUNCTION__ << " &line= " << __LINE__ 
+        << " at:obj_count= " << p_pool_at->obj_count() \
+        << std::endl;
+
+    std::cout << "function= " << __FUNCTION__ << " &line= " << __LINE__ 
+        << " bt:obj_count= " << p_pool_bt->obj_count() \
+        << std::endl;
+
+    return;
+}
+
+int main(int argc, char* argv[])
+{
+    TestObjectPool();
+    return 0;
+}
+#endif
+
