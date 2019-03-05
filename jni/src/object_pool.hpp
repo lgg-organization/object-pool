@@ -12,11 +12,10 @@
 const int MaxObjectNum = 10;
 
 template<typename T>
-class ObjectPool
+class ObjectPool: public std::enable_shared_from_this<ObjectPool<T>>
 {
 public:
     using ObjPoolSharedPtr = std::shared_ptr<ObjectPool<T>>;
-    using ObjPoolWeakPtr = std::weak_ptr<ObjectPool<T>>;
 
 public:
     static ObjPoolSharedPtr CreateObjectPoolPtr()
@@ -59,26 +58,26 @@ public:
     }
 
     template<typename... Args>
-    static std::shared_ptr<T> get(ObjPoolSharedPtr pool, Args... args) {
-        ObjPoolWeakPtr weak_pool = pool;
+    std::shared_ptr<T> get(Args... args) {
 
-        std::lock_guard<std::mutex> lock(pool->m_pool_mutex);
-        if (pool->m_pool.empty()) {
+        ObjPoolSharedPtr pool = this->shared_from_this();
+        std::lock_guard<std::mutex> lock(m_pool_mutex);
+        if (m_pool.empty()) {
             #if OBJ_POOL_DEBUG
             std::cout << "function= " << __FUNCTION__ \
                 << " &line= " << __LINE__ << " new object!" \
                 << std::endl;
             #endif
 
-            pool->m_total_count++;
-            return createSharedPtr<Args...>(weak_pool, args...);
+            m_total_count++;
+            return createSharedPtr<Args...>(pool, args...);
         }else {
-            T* p = pool->m_pool.back();
-            pool->m_pool.pop_back();
-            return createSharedPtr(weak_pool, p);
+            T* p = m_pool.back();
+            m_pool.pop_back();
+            return makeSharedPtr(pool, p);
         }
     }
-
+    
     int obj_count() {
         return m_total_count;
     }
@@ -105,7 +104,7 @@ public:
     }
 
 private:
-    static std::shared_ptr<T> createSharedPtr(ObjPoolWeakPtr pool, T* ptr)
+    static std::shared_ptr<T> makeSharedPtr(ObjPoolSharedPtr pool, T* ptr)
     {
         #if OBJ_POOL_DEBUG
         std::cout << "function= " << __FUNCTION__ << " &line= " << __LINE__ \
@@ -113,50 +112,37 @@ private:
             << std::endl;
         #endif
         return std::shared_ptr<T>(ptr, [pool](T* p){
-            free_object(pool, p);
+            pool->free_object(p);
         });
     }
 
     template<typename... Args>
-    static std::shared_ptr<T> createSharedPtr(ObjPoolWeakPtr pool, Args... args)
+    static std::shared_ptr<T> createSharedPtr(ObjPoolSharedPtr pool, Args... args)
     {
         T* ptr = new T(args...);
-        return createSharedPtr(pool, ptr);
+        return makeSharedPtr(pool, ptr);
     }
 
-    static void free_object(ObjPoolWeakPtr pool, T* ptr) {
-        if (pool.expired()) {
-            #if OBJ_POOL_DEBUG
-            std::cout << "function= " << __FUNCTION__ \
-                << " &line= " << __LINE__ << " expired!" \
-                << " ptr= " << ptr \
-                << std::endl;
-            #endif
+    void free_object(T* ptr) {
 
-            delete ptr;
-            return;
-        }
-
-        ObjPoolSharedPtr shared_pool = pool.lock();
-        std::lock_guard<std::mutex> lock(shared_pool->m_pool_mutex);
+        std::lock_guard<std::mutex> lock(m_pool_mutex);
         #if OBJ_POOL_DEBUG
         std::cout << "function= " << __FUNCTION__ \
             << " &ptr= " << ptr \
-            << " cnt= " << shared_pool.use_count() \
             << std::endl;
         #endif
 
-        if (shared_pool->m_pool.size() < MaxObjectNum) {
-            shared_pool->m_pool.emplace_back(ptr);
+        if (m_pool.size() < MaxObjectNum) {
+            m_pool.emplace_back(ptr);
         }else {
             #if OBJ_POOL_DEBUG
             std::cout << "function= " << __FUNCTION__ \
                 << " &ptr= " << ptr \
-                << " full: size= " << shared_pool->m_pool.size() \
+                << " full: size= " << m_pool.size() \
                 << std::endl;
             #endif
 
-            shared_pool->m_total_count--;
+            m_total_count--;
             delete ptr;
         }
         return;
@@ -167,4 +153,3 @@ private:
     std::list<T*> m_pool;
     int m_total_count = 0;
 };
-

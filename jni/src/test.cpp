@@ -77,7 +77,7 @@ int main(int argc, char* argv[])
     bool ret = pool->create(2, 576, 320);
     printf("creat: ret= %d\n", ret);
 
-    auto img = ObjectPool<TestImage>::get(pool);
+    auto img = pool->get(1280, 720);
     if (nullptr == img->get_buffer()) {
         printf("pool object get: failed!!\n");
         return -1;
